@@ -1,0 +1,1666 @@
+<!--
+DATA SOURCE: Google Sheet 1VJ2kf8Dc-E9gnATA3RCXyYapzUoqerev-v3h650eXqM
+FETCH METHOD: gviz JSONP (fallback: published CSV)
+REFRESH: every 10 minutes + manual button
+PRIMARY METRIC: Quantity in Mt
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Intake &amp; Approvals — FY27</title>
+
+<!-- ============================================================ STYLES -->
+<style>
+  :root{
+    --bg:#F7F8FA; --card:#FFFFFF; --border:#E5E7EB; --ink:#111827; --sub:#6B7280;
+    --asl:#0F766E; --asil:#B45309; --danger:#B91C1C; --success:#15803D; --amber:#D97706;
+    --radius:12px; --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.05);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:13px; color:var(--ink);
+    background:var(--bg); display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+  button{font-family:inherit; font-size:13px; cursor:pointer;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);}
+  .card-title{font-size:14px; font-weight:600; padding:12px 14px 4px;}
+  .card-sub{font-size:11px; color:var(--sub); padding:0 14px 6px;}
+
+  /* refresh progress bar */
+  #refreshBar{position:fixed; top:0; left:0; height:3px; width:0%; background:var(--asl); z-index:1000; opacity:0; border-radius:0 2px 2px 0;}
+
+  /* ============================== HEADER */
+  header{display:flex; align-items:center; gap:16px; padding:10px 18px 8px; background:var(--card); border-bottom:1px solid var(--border); flex:0 0 auto;}
+  header h1{font-size:17px; font-weight:700; letter-spacing:-.01em;}
+  header .subtitle{font-size:11.5px; color:var(--sub); margin-top:1px;}
+  .head-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
+  #liveBadge{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.05em;
+    padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#ECFDF5; color:var(--success);}
+  #liveBadge .dot{width:8px; height:8px; border-radius:50%; background:var(--success); display:inline-block;}
+  #liveBadge.stale{background:#FFF7ED; color:var(--amber); border-color:#FED7AA;}
+  #liveBadge.stale .dot{background:var(--amber);}
+  #liveBadge.down{background:#FEF2F2; color:var(--danger); border-color:#FECACA;}
+  #liveBadge.down .dot{background:var(--danger);}
+  #lastUpdated{font-size:11px; color:var(--sub); background:var(--card); border:1px solid var(--border);
+    padding:4px 10px; border-radius:999px; white-space:nowrap;}
+
+  /* ============================== FILTER BAR */
+  #filterBar{position:sticky; top:0; z-index:50; display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+    padding:8px 18px; background:var(--card); border-bottom:1px solid var(--border); flex:0 0 auto;}
+  .flabel{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--sub); margin-right:2px;}
+  .chip{border:1px solid var(--border); background:var(--card); border-radius:999px; padding:4px 11px; font-size:12px; color:var(--ink); transition:all .15s;}
+  .chip:hover{border-color:var(--asl);}
+  .chip.on{background:var(--asl); border-color:var(--asl); color:#fff; font-weight:600;}
+  .seg{display:inline-flex; border:1px solid var(--border); border-radius:9px; overflow:hidden;}
+  .seg button{border:none; background:var(--card); padding:4px 12px; color:var(--ink);}
+  .seg button.on{background:var(--asl); color:#fff; font-weight:600;}
+  .seg button.on.asil{background:var(--asil);}
+  .dd{position:relative;}
+  .dd-btn{border:1px solid var(--border); background:var(--card); border-radius:9px; padding:4px 11px; color:var(--ink); display:inline-flex; gap:6px; align-items:center;}
+  .dd-btn:hover{border-color:var(--asl);}
+  .dd-btn .n{background:#EFF6FF; color:#1D4ED8; border-radius:999px; padding:0 6px; font-size:11px; font-weight:700;}
+  .dd-panel{display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:200; min-width:230px; max-height:320px; overflow:auto;
+    background:var(--card); border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(16,24,40,.12); padding:6px;}
+  .dd.open .dd-panel{display:block;}
+  .dd-panel input[type=text]{width:100%; border:1px solid var(--border); border-radius:7px; padding:5px 8px; margin-bottom:6px; font-size:12px; outline:none;}
+  .dd-panel input[type=text]:focus{border-color:var(--asl);}
+  .opt{display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;}
+  .opt:hover{background:#F3F4F6;}
+  .opt input{accent-color:var(--asl);}
+  .opt .cnt{margin-left:auto; color:var(--sub); font-size:11px;}
+  .dd-actions{display:flex; gap:6px; padding:6px 4px 2px; border-bottom:1px solid var(--border); margin-bottom:4px;}
+  .dd-actions button{border:none; background:none; color:var(--asl); font-size:11.5px; font-weight:600; padding:2px 4px;}
+  #refreshBtn{border:1px solid var(--asl); color:var(--asl); background:#F0FDFA; border-radius:9px; padding:4px 12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;}
+  #refreshBtn:hover{background:var(--asl); color:#fff;}
+  #refreshBtn.busy svg{animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #resetBtn{border:1px solid var(--border); color:var(--sub); background:var(--card); border-radius:9px; padding:4px 12px;}
+  #resetBtn:hover{color:var(--danger); border-color:var(--danger);}
+  .spacer{flex:1;}
+
+  /* ============================== CAROUSEL */
+  #dashWrap{flex:1 1 auto; min-height:0; position:relative;}
+  .swiper{width:100%; height:100%;}
+  .swiper-slide{height:100%; overflow-y:auto; padding:14px 20px 54px; background:var(--bg);}
+  .swiper-pagination{bottom:14px !important;}
+  .swiper-pagination-bullet{background:#C4CBD5; opacity:1; width:8px; height:8px; transition:all .2s;}
+  .swiper-pagination-bullet-active{background:var(--asl); width:24px; border-radius:5px;}
+  .swiper-button-prev,.swiper-button-next{--swiper-navigation-size:16px; color:#9CA3AF; opacity:.55; background:rgba(255,255,255,.85);
+    border:1px solid var(--border); border-radius:50%; width:34px; height:34px; transition:all .2s;}
+  .swiper-button-prev:hover,.swiper-button-next:hover{opacity:1; color:var(--asl); border-color:var(--asl);}
+  .swiper-button-prev:after,.swiper-button-next:after{font-size:15px; font-weight:700;}
+
+  /* KPI tiles */
+  .kpi-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:14px;}
+  .kpi{padding:14px 14px 12px; position:relative; overflow:hidden;}
+  .kpi .v{font-size:32px; font-weight:600; letter-spacing:-.02em; line-height:1.05; margin:4px 0 2px;}
+  .kpi .l{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--sub);}
+  .kpi .c{font-size:11.5px; color:var(--sub); margin-top:6px; min-height:15px;}
+  .kpi .c b{color:var(--ink);}
+  .badge{display:inline-block; font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:999px; margin-top:4px;}
+  .badge.g{background:#ECFDF5; color:var(--success);} .badge.a{background:#FFF7ED; color:var(--amber);} .badge.r{background:#FEF2F2; color:var(--danger);}
+  .splitbars{margin-top:6px; display:flex; flex-direction:column; gap:4px;}
+  .sb{display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--sub);}
+  .sb .nm{width:32px; font-weight:700;}
+  .sb .bar{height:7px; border-radius:4px; background:var(--asl); min-width:2px; transition:width .4s ease;}
+  .sb.asil .bar{background:var(--asil);}
+  .sb .tx{white-space:nowrap;}
+
+  /* charts layout */
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
+  .grid-2-1{display:grid; grid-template-columns:0.9fr 1.1fr; gap:12px;}
+  .colstack{display:flex; flex-direction:column; gap:12px;}
+  .chart{width:100%;}
+  #chartMonthly{height:330px;} #chartPlant{height:250px;} #chartTop{height:280px;} #chartCountry{height:270px;}
+  #chartDaTrend{height:330px;} #chartDaStatus{height:330px;}
+  #plantLegend{padding:4px 14px 10px; display:flex; flex-direction:column; gap:4px;}
+  #plantLegend .pl{display:flex; align-items:center; gap:7px; font-size:12px; cursor:pointer; padding:2px 4px; border-radius:6px;}
+  #plantLegend .pl:hover{background:#F3F4F6;}
+  #plantLegend .sw{width:10px; height:10px; border-radius:3px;}
+  #plantLegend .mt{margin-left:auto; color:var(--sub);}
+  .slide-head{display:flex; align-items:baseline; gap:10px; margin-bottom:10px;}
+  .slide-head h2{font-size:15px; font-weight:700;}
+  .slide-head .hint{font-size:11px; color:var(--sub);}
+
+  /* ============================== TABLE */
+  .table-tools{display:flex; align-items:center; gap:10px; padding:10px 14px; flex-wrap:wrap;}
+  #tableSearch{border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:12px; width:220px; outline:none;}
+  #tableSearch:focus{border-color:var(--asl);}
+  #rowInfo{font-size:11.5px; color:var(--sub); margin-left:auto;}
+  .tblwrap{overflow:auto; max-height:calc(100% - 100px); border-top:1px solid var(--border);}
+  table.tbl{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.tbl th{position:sticky; top:0; background:#F9FAFB; border-bottom:1px solid var(--border); padding:8px 10px; text-align:left;
+    font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--sub); cursor:pointer; user-select:none; white-space:nowrap; z-index:5;}
+  table.tbl th .arr{font-size:9px; margin-left:3px;}
+  table.tbl td{padding:7px 10px; border-bottom:1px solid #F1F3F5; white-space:nowrap;}
+  table.tbl tbody tr:hover{background:#F0FDFA; cursor:pointer;}
+  table.tbl tr:nth-child(even){background:#FAFBFC;}
+  table.tbl tr:nth-child(even):hover{background:#F0FDFA;}
+  td.num{text-align:right; font-variant-numeric:tabular-nums;}
+  .pdot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;}
+  .pager{display:flex; align-items:center; gap:8px; padding:9px 14px; border-top:1px solid var(--border); font-size:12px; color:var(--sub);}
+  .pager button{border:1px solid var(--border); background:var(--card); border-radius:7px; padding:3px 10px; color:var(--ink);}
+  .pager button:disabled{opacity:.4; cursor:default;}
+
+  /* ============================== DRAWER */
+  #drawerBackdrop{position:fixed; inset:0; background:rgba(15,23,42,.32); z-index:900; display:none;}
+  #drawer{position:fixed; top:0; right:-420px; width:400px; max-width:92vw; height:100vh; background:var(--card); z-index:910;
+    box-shadow:-12px 0 40px rgba(16,24,40,.18); display:flex; flex-direction:column; transition:right .28s ease;}
+  #drawer.open{right:0;}
+  .dhead{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border);}
+  .dhead b{font-size:14px;}
+  #drawerClose{margin-left:auto; border:none; background:none; font-size:18px; color:var(--sub);}
+  #drawerBody{overflow:auto; padding:10px 16px 24px;}
+  .drow{padding:8px 0; border-bottom:1px solid #F1F3F5;}
+  .drow .k{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--sub); margin-bottom:2px;}
+  .drow .val{font-size:12.5px; white-space:pre-wrap; word-break:break-word;}
+
+  /* ============================== DATA QUALITY PANEL */
+  #dqBtn{position:fixed; left:16px; bottom:16px; z-index:800; border:1px solid var(--border); background:var(--card);
+    border-radius:999px; padding:7px 14px; font-size:12px; font-weight:600; box-shadow:var(--shadow); display:flex; gap:7px; align-items:center;}
+  #dqBtn:hover{border-color:var(--asil);}
+  #dqCount{background:#FEF3C7; color:#92400E; border-radius:999px; padding:0 7px; font-size:11px; font-weight:700;}
+  #dqPanel{position:fixed; left:16px; bottom:56px; z-index:801; width:520px; max-width:94vw; max-height:56vh; overflow:auto;
+    background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 40px rgba(16,24,40,.18); display:none; padding-bottom:8px;}
+  #dqPanel.open{display:block;}
+  #dqPanel .dhead{padding:12px 14px 8px;}
+  #dqPanel h4{font-size:12px; margin:10px 14px 4px; color:var(--sub); text-transform:uppercase; letter-spacing:.05em;}
+  #dqPanel .kv{font-size:12px; padding:2px 14px; color:var(--ink);}
+  #dqPanel ul{margin:4px 14px 8px 26px; font-size:11.5px; color:var(--sub); line-height:1.5;}
+  table.dqt{width:100%; border-collapse:collapse; font-size:11.5px;}
+  table.dqt th{text-align:left; padding:5px 8px; color:var(--sub); font-size:10.5px; text-transform:uppercase; border-bottom:1px solid var(--border);}
+  table.dqt td{padding:4px 8px; border-bottom:1px solid #F3F4F6; vertical-align:top;}
+  .tag{display:inline-block; font-size:9.5px; font-weight:700; padding:0 6px; border-radius:4px; background:#F3F4F6; color:var(--sub);}
+
+  /* ============================== TOASTS & BANNERS */
+  #toasts{position:fixed; right:16px; bottom:16px; z-index:950; display:flex; flex-direction:column; gap:8px; max-width:340px;}
+  .toast{background:#111827; color:#fff; font-size:12.5px; padding:10px 14px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.25);}
+  .toast.warn{background:#92400E;} .toast.err{background:var(--danger);} .toast.ok{background:var(--success);}
+  .banner{display:none; margin:12px 20px 0; padding:12px 16px; border-radius:12px; font-size:12.5px; line-height:1.5;}
+  .banner.show{display:block;}
+  #cdnError{background:#FEF2F2; border:1px solid #FECACA; color:#991B1B;}
+  #fetchError{background:#FFF7ED; border:1px solid #FED7AA; color:#92400E;}
+  .banner button{margin-left:8px; border:1px solid currentColor; background:none; border-radius:7px; padding:3px 10px; color:inherit; font-weight:600;}
+
+  /* ============================== RESPONSIVE */
+  @media (max-width:1100px){
+    .kpi-grid{grid-template-columns:repeat(3,1fr);}
+    .grid-2, .grid-2-1{grid-template-columns:1fr;}
+    .kpi .v{font-size:28px;}
+  }
+  @media (max-width:640px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr);}
+    header h1{font-size:15px;}
+    .dd-panel{max-width:78vw;}
+  }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+</head>
+<body>
+
+<div id="refreshBar"></div>
+
+<!-- ============================== HEADER -->
+<header>
+  <div>
+    <h1>Order Intake &amp; Approvals — FY27</h1>
+    <div class="subtitle">Apr–Nov 2026 · Quantities in Mt · Live from Google Sheets</div>
+  </div>
+  <div class="head-right">
+    <span id="liveBadge" title="Live fetch status"><span class="dot" id="liveDot"></span><span id="liveText">CONNECTING</span></span>
+    <span id="lastUpdated">Last updated: —</span>
+  </div>
+</header>
+
+<!-- ============================== FILTERS -->
+<div id="filterBar">
+  <span class="flabel">Month</span>
+  <span id="monthChips" style="display:inline-flex; gap:5px; flex-wrap:wrap;"></span>
+  <span class="flabel" style="margin-left:6px;">Plant</span>
+  <span class="seg" id="plantSeg">
+    <button data-plant="All" class="on">All</button>
+    <button data-plant="ASL">ASL</button>
+    <button data-plant="ASIL" class="asil">ASIL</button>
+  </span>
+  <span class="dd" id="countryDD">
+    <button class="dd-btn" id="countryBtn">Country: All ▾</button>
+    <div class="dd-panel">
+      <div class="dd-actions"><button data-act="all">Select all</button><button data-act="none">Clear</button></div>
+      <div id="countryList"></div>
+    </div>
+  </span>
+  <span class="dd" id="custDD">
+    <button class="dd-btn" id="custBtn">Customer: All ▾</button>
+    <div class="dd-panel" style="min-width:260px;">
+      <div class="dd-actions"><button data-act="all">Select all</button><button data-act="none">Clear</button></div>
+      <input type="text" id="custSearch" placeholder="Search customers…">
+      <div id="custList"></div>
+    </div>
+  </span>
+  <span class="spacer"></span>
+  <button id="refreshBtn" title="Re-fetch live data now">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+    Refresh
+  </button>
+  <button id="resetBtn">Reset filters</button>
+</div>
+
+<div id="cdnError" class="banner">
+  <b>Libraries not loaded.</b> This dashboard needs Plotly.js, Swiper.js and GSAP from their CDNs.
+  If you are viewing it inside an embedded sandbox preview (which blocks external scripts and network calls),
+  download this HTML file and open it directly in Chrome, Edge or Firefox — it will then fetch live data from the
+  Google Sheet and render fully.
+</div>
+<div id="fetchError" class="banner">
+  <b>Live data unavailable.</b> The Google Sheet could not be reached via the gviz JSONP endpoint or the CSV fallback.
+  Sheet must be published to web for CSV fallback — <b>File → Share → Publish to web → CSV</b> — then paste the generated
+  URLs into <code>CONFIG.csvUrls</code> at the top of this file's script.
+  <button id="fetchRetry">Retry now</button>
+</div>
+
+<!-- ============================== CAROUSEL -->
+<div id="dashWrap">
+  <div class="swiper" id="dashSwiper">
+    <div class="swiper-wrapper">
+
+      <!-- Slide 1 — Executive snapshot -->
+      <div class="swiper-slide" id="slide1">
+        <div class="kpi-grid">
+          <div class="card kpi anim"><div class="l">Total Order Intake YTD (Mt)</div><div class="v" id="kpiTotal">—</div><div class="c" id="kpiTotalCtx">loading…</div></div>
+          <div class="card kpi anim"><div class="l">Order Count</div><div class="v" id="kpiOrders">—</div><div class="c" id="kpiOrdersCtx"></div></div>
+          <div class="card kpi anim"><div class="l">ASL : ASIL Split</div><div class="v" id="kpiSplit">—</div>
+            <div class="splitbars" id="splitBars"></div><div class="c" id="kpiSplitCtx"></div></div>
+          <div class="card kpi anim"><div class="l">Avg DA Turnaround (days)</div><div class="v" id="kpiDa">—</div><span class="badge" id="kpiSla">…</span><div class="c" id="kpiDaCtx"></div></div>
+          <div class="card kpi anim"><div class="l">DA Pending</div><div class="v" id="kpiPending">—</div><div class="c" id="kpiPendingCtx"></div></div>
+          <div class="card kpi anim"><div class="l">Top-5 Customer Concentration</div><div class="v" id="kpiConc">—</div><div class="c" id="kpiConcCtx"></div></div>
+        </div>
+        <div class="card anim">
+          <div class="card-title">Monthly Order Intake (Mt)</div>
+          <div class="card-sub">Bar = Mt booked · line = month-over-month % · dashed outline = month still in progress. Click a bar to filter.</div>
+          <div class="chart" id="chartMonthly"></div>
+        </div>
+      </div>
+
+      <!-- Slide 2 — Plant & customer mix -->
+      <div class="swiper-slide" id="slide2">
+        <div class="slide-head"><h2>Plant &amp; Customer Mix</h2><span class="hint">Click any bar or legend row to cross-filter all slides.</span></div>
+        <div class="grid-2-1 anim">
+          <div class="card">
+            <div class="card-title">Plant Split (Mt)</div>
+            <div class="chart" id="chartPlant"></div>
+            <div id="plantLegend"></div>
+          </div>
+          <div class="colstack">
+            <div class="card">
+              <div class="card-title">Top 10 Customers (Mt)</div>
+              <div class="card-sub">Hover for order count &amp; countries served.</div>
+              <div class="chart" id="chartTop"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Country Distribution (Mt)</div>
+              <div class="card-sub">Hover for customer count.</div>
+              <div class="chart" id="chartCountry"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3 — Approvals -->
+      <div class="swiper-slide" id="slide3">
+        <div class="slide-head"><h2>Delivery Approvals — DA Turnaround &amp; Status</h2><span class="hint">FY26 historical rows excluded from KPIs, shown as grey context in the status chart.</span></div>
+        <div class="grid-2 anim">
+          <div class="card">
+            <div class="card-title">DA Turnaround Trend (avg days, approved)</div>
+            <div class="card-sub">Red dashed line = SLA 3 days · faint line = DA rows per month.</div>
+            <div class="chart" id="chartDaTrend"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">DA Approval Status by Month</div>
+            <div class="card-sub">Stacked rows · hover for percentages.</div>
+            <div class="chart" id="chartDaStatus"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4 — Detail -->
+      <div class="swiper-slide" id="slide4">
+        <div class="slide-head"><h2>Order Detail</h2><span class="hint">Click a header to sort · click a row for full detail.</span></div>
+        <div class="card anim" style="height:calc(100% - 34px); display:flex; flex-direction:column;">
+          <div class="table-tools">
+            <input type="text" id="tableSearch" placeholder="Search customer, SO number, country…">
+            <span id="rowInfo"></span>
+          </div>
+          <div class="tblwrap">
+            <table class="tbl" id="ordersTable">
+              <thead><tr id="tHead"></tr></thead>
+              <tbody id="tBody"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <button id="pagFirst">«</button><button id="pagPrev">‹</button>
+            <span id="pagInfo">—</span>
+            <button id="pagNext">›</button><button id="pagLast">»</button>
+            <span style="margin-left:auto;">25 rows / page</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="swiper-pagination"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
+  </div>
+</div>
+
+<!-- ============================== ROW DRAWER -->
+<div id="drawerBackdrop"></div>
+<aside id="drawer">
+  <div class="dhead"><b id="drawerTitle">Order detail</b><button id="drawerClose" title="Close">✕</button></div>
+  <div id="drawerBody"></div>
+</aside>
+
+<!-- ============================== DATA QUALITY PANEL -->
+<button id="dqBtn">Data quality <span id="dqCount">0</span></button>
+<div id="dqPanel">
+  <div class="dhead"><b>Data quality &amp; fetch status</b><button id="dqClose" style="margin-left:auto;border:none;background:none;font-size:16px;color:var(--sub);">✕</button></div>
+  <h4>Fetch status</h4>
+  <div id="dqFetch"></div>
+  <h4>Assumptions applied</h4>
+  <ul id="dqAssump"></ul>
+  <h4>Rows that could not be parsed cleanly</h4>
+  <table class="dqt" id="dqTable"><thead><tr><th>Sheet</th><th>Row</th><th>Reason</th><th>Detail</th></tr></thead><tbody id="dqRows"></tbody></table>
+</div>
+
+<div id="toasts"></div>
+
+<!-- CDN libraries -->
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<script>
+/* ###################################################################################### */
+/* <!-- CONFIG -->                                                                        */
+/* ###################################################################################### */
+const CONFIG = {
+  sheetId: '1VJ2kf8Dc-E9gnATA3RCXyYapzUoqerev-v3h650eXqM',
+  tabs: { orders: 'FY27 Orders', da: 'DA-2026-2027' },
+  refreshMinutes: 10,                       // live re-fetch interval
+  slaDays: 3,                               // DA turnaround SLA
+  monthOrder: ['April','May','June','July','August','September','October','November'],
+  fiscalFull: ['April','May','June','July','August','September','October','November','December','January','February','March'],
+  monthShort: { April:'Apr', May:'May', June:'Jun', July:'Jul', August:'Aug', September:'Sep', October:'Oct', November:'Nov', December:'Dec', January:'Jan', February:'Feb', March:'Mar' },
+  localStorageKey: 'fy27_orders_dashboard_v1',
+  // Optional escape hatch: paste "Publish to web" CSV URLs here to make the fallback bulletproof.
+  //   File → Share → Publish to web → select tab → CSV → copy URL.
+  csvUrls: { orders: null, da: null }
+};
+// Pre-encoded gviz JSONP URLs (already used by the fetcher — kept here for reference / hand-editing):
+//   Orders: https://docs.google.com/spreadsheets/d/1VJ2kf8Dc-E9gnATA3RCXyYapzUoqerev-v3h650eXqM/gviz/tq?tqx=out:json&sheet=FY27%20Orders
+//   DA    : https://docs.google.com/spreadsheets/d/1VJ2kf8Dc-E9gnATA3RCXyYapzUoqerev-v3h650eXqM/gviz/tq?tqx=out:json&sheet=DA-2026-2027
+
+const GVIZ_BASE = 'https://docs.google.com/spreadsheets/d/' + CONFIG.sheetId + '/gviz/tq';
+const PLANT_COLORS = { ASL:'#0F766E', ASIL:'#B45309', Unassigned:'#94A3B8' };
+const STATUS_COLORS = { Approved:'#15803D', Pending:'#D97706', HOLD:'#B91C1C', Cancelled:'#6B7280', 'FY26 (context)':'#CBD5E1' };
+
+const STATE = {
+  data: null,            // {orders, da, dq, assumptions, fetchedAt, fetchInfo}
+  grids: null,           // last good grids for partial-failure recovery
+  filters: { months: new Set(), plant: 'All', countries: new Set(), customers: new Set() },
+  shortMap: {},          // short code -> normalized customer (built from Orders tab)
+  custCountries: {},     // normalized customer -> Set(countries)
+  sort: { key: 'month', dir: 1 }, page: 1, pageSize: 25, search: '',
+  swiper: null, fetching: false, lastFetchOk: null, nextRefresh: null, fetchTimer: null, cbCount: 0
+};
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const collapse = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+const hasGsap = () => typeof window.gsap !== 'undefined';
+const fmt = n => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: 1 });
+const fmtInt = n => (n == null || !isFinite(n)) ? '—' : Math.round(n).toLocaleString('en-US');
+const fmtPct = n => (n == null || !isFinite(n)) ? '—' : (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+const dayMs = 86400000;
+
+/* ###################################################################################### */
+/* <!-- FETCH -->  gviz JSONP → gviz CSV (fetch) → published CSV (CONFIG.csvUrls)          */
+/* ###################################################################################### */
+
+function gvizJsonUrl(sheet, out) {
+  return GVIZ_BASE + '?tqx=out:' + out + '&sheet=' + encodeURIComponent(sheet) + '&_=' + Date.now();
+}
+
+// JSONP: dynamically injected <script> — CORS-safe, works from a local file.
+function gvizJsonp(sheet) {
+  return new Promise((resolve, reject) => {
+    const cb = '__gvizCB' + (++STATE.cbCount);
+    const script = document.createElement('script');
+    let done = false;
+    const cleanup = () => {
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+    const to = setTimeout(() => { if (!done) { done = true; cleanup(); reject(new Error('gviz JSONP timeout (' + sheet + ')')); } }, 20000);
+    window[cb] = resp => {
+      if (done) return; done = true; clearTimeout(to); cleanup();
+      if (resp && resp.status === 'ok' && resp.table && resp.table.rows) resolve(resp.table);
+      else reject(new Error('gviz error response (' + sheet + '): ' + (resp && resp.reasons && resp.reasons[0] && resp.reasons[0].message || resp && resp.status)));
+    };
+    script.onerror = () => { if (!done) { done = true; clearTimeout(to); cleanup(); reject(new Error('gviz JSONP network error (' + sheet + ')')); } };
+    script.src = GVIZ_BASE + '?tqx=out:json;responseHandler:' + cb + '&sheet=' + encodeURIComponent(sheet) + '&_=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+function fetchText(url) {
+  return fetch(url, { mode: 'cors' }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
+}
+
+// CSV parser: handles quoted fields with embedded commas / newlines.
+function parseCsv(text) {
+  const rows = []; let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c !== '\r') field += c;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function gridFromGviz(table) {
+  const n = (table.cols || []).length;
+  const labels = (table.cols || []).map(c => (c && (c.label || c.id)) || '');
+  const rows = (table.rows || []).map(r => {
+    const a = new Array(n).fill(null);
+    (r.c || []).forEach((cell, i) => { if (cell && cell.v != null) a[i] = cell.v; });
+    return a;
+  });
+  if (!rows.length) throw new Error('empty sheet');
+  return { labels, rows };
+}
+
+function gridFromCsv(text) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) throw new Error('empty CSV');
+  return { labels: rows[0].map(c => String(c)), rows: rows.slice(1) };
+}
+
+// Per-tab fetch chain: JSONP gviz → fetch gviz CSV → published CSV URL.
+async function fetchTab(kind) {
+  const sheet = CONFIG.tabs[kind];
+  try {
+    return { grid: gridFromGviz(await gvizJsonp(sheet)), method: 'gviz JSONP' };
+  } catch (e1) {
+    try {
+      return { grid: gridFromCsv(await fetchText(gvizJsonUrl(sheet, 'csv'))), method: 'gviz CSV' };
+    } catch (e2) {
+      if (CONFIG.csvUrls[kind]) {
+        const g = gridFromCsv(await fetchText(CONFIG.csvUrls[kind]));
+        return { grid: g, method: 'published CSV' };
+      }
+      throw e1;
+    }
+  }
+}
+
+function progressStart() {
+  const bar = $('#refreshBar');
+  if (!hasGsap()) return;
+  gsap.killTweensOf(bar);
+  gsap.set(bar, { width: '0%', opacity: 1 });
+  gsap.to(bar, { width: '90%', duration: 8, ease: 'power1.out' });
+}
+function progressEnd(ok) {
+  const bar = $('#refreshBar');
+  if (!hasGsap()) { bar.style.opacity = 0; return; }
+  gsap.killTweensOf(bar);
+  gsap.to(bar, { width: '100%', duration: 0.2, onComplete: () => gsap.to(bar, { opacity: 0, duration: 0.4 }) });
+}
+
+async function fetchAll() {
+  if (STATE.fetching) return;
+  STATE.fetching = true;
+  $('#refreshBtn').classList.add('busy');
+  progressStart();
+  const res = await Promise.allSettled([fetchTab('orders'), fetchTab('da')]);
+  progressEnd();
+  $('#refreshBtn').classList.remove('busy');
+  STATE.fetching = false;
+
+  const [ro, rd] = res;
+  const okO = ro.status === 'fulfilled', okD = rd.status === 'fulfilled';
+
+  if (!okO && !okD) {
+    // Total failure — never blank the dashboard.
+    $('#fetchError').classList.add('show');
+    setLive('down');
+    if (STATE.data) {
+      toast('Live data unavailable — showing last cached snapshot', 'warn');
+      updateFetchInfo(false, null);
+    } else {
+      toast('Live data unavailable and no cached snapshot yet', 'err');
+    }
+    return;
+  }
+  $('#fetchError').classList.remove('show');
+
+  // Partial failure: keep last good grid for the failed tab.
+  const grids = STATE.grids || {};
+  const info = { methodOrders: 'cached snapshot', methodDa: 'cached snapshot' };
+  if (okO) { grids.orders = ro.value.grid; info.methodOrders = ro.value.method; }
+  if (okD) { grids.da = rd.value.grid; info.methodDa = rd.value.method; }
+  STATE.grids = grids;
+
+  STATE.data = buildData(grids, info);
+  STATE.lastFetchOk = new Date();
+  STATE.nextRefresh = new Date(Date.now() + CONFIG.refreshMinutes * 60000);
+  updateFetchInfo(true, { okO, okD });
+  setLive('ok');
+  $('#lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString('en-GB');
+  saveSnapshot();
+  buildFilterOptions();
+  renderAll(true);
+  if (okO && okD) toast('Data refreshed · ' + STATE.data.orders.length + ' order rows · ' + STATE.data.da.length + ' DA rows', 'ok');
+  else toast('Partial fetch failure — one tab kept from cached snapshot', 'warn');
+}
+
+function saveSnapshot() {
+  try {
+    localStorage.setItem(CONFIG.localStorageKey, JSON.stringify({
+      ts: Date.now(), grids: STATE.grids, info: STATE.data.fetchInfo
+    }));
+  } catch (e) { /* storage may be unavailable — non-fatal */ }
+}
+
+function loadSnapshot() {
+  try {
+    const raw = localStorage.getItem(CONFIG.localStorageKey);
+    if (!raw) return false;
+    const snap = JSON.parse(raw);
+    if (!snap.grids || !snap.grids.orders || !snap.grids.da) return false;
+    STATE.grids = snap.grids;
+    STATE.data = buildData(snap.grids, snap.info || {});
+    STATE.lastFetchOk = new Date(snap.ts);
+    $('#lastUpdated').textContent = 'Last updated: ' + STATE.lastFetchOk.toLocaleTimeString('en-GB');
+    setLive('stale');
+    toast('Loaded cached snapshot from ' + STATE.lastFetchOk.toLocaleString() + ' — fetching live data…', '');
+    buildFilterOptions();
+    renderAll(true);
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ###################################################################################### */
+/* <!-- PARSE -->  sheet grids -> normalized order & DA arrays                             */
+/* ###################################################################################### */
+
+function normMonth(v) {
+  const s = collapse(v).toLowerCase().replace(/[^a-z]/g, '');
+  if (!s) return null;
+  const hit = CONFIG.fiscalFull.find(m => {
+    const ml = m.toLowerCase();
+    return ml === s || (s.length >= 3 && ml.indexOf(s) === 0);
+  });
+  return hit || null;
+}
+const fiscalIdx = m => { const i = CONFIG.fiscalFull.indexOf(m); return i < 0 ? null : i + 3; }; // calendar month index in 2026 (April→3)
+
+function currentFyMonth() {
+  const m = new Date().getMonth();
+  return (m >= 3 && m <= 10) ? CONFIG.monthOrder[m - 3] : null; // Apr..Nov 2026
+}
+
+// ---- customer normalization (mandatory before any aggregation) ----
+const CUST_RULES = [
+  { name: 'Damstahl / DSS Group',   re: /damst|dss/i },
+  { name: 'Nerezove Group',         re: /nerezov/i },
+  { name: 'Bucher Stahl',           re: /bucher/i },
+  { name: 'Intersteel',             re: /intersteel/i },
+  { name: 'ThyssenKrupp Group',     re: /thyss|thyseen|thyssenkrup|tk\s*accelis/i },
+  { name: 'JMS Group',              re: /(^|[^a-z])(jms|ims|imi|iug|isp|igg)([^a-z]|$)/i },
+  { name: 'Stappert',               re: /stappert/i },
+  { name: 'Eisen-Schmid (EGG)',     re: /eisen|schmid/i },
+  { name: 'MCB Nederland',          re: /mcb/i },
+  { name: 'Zwick',                  re: /zwick/i },
+  { name: 'S.INOX',                 re: /s\.?\s?inox/i },
+  { name: 'Calibrados Pradera',     re: /calibrados|callibrados|pradera/i }
+];
+const CUST_EXACT = { dsd: 'Damstahl / DSS Group', dss: 'Damstahl / DSS Group', tkg: 'ThyssenKrupp Group' };
+const custRegistry = new Map();
+
+function genericCustomer(s) {
+  let t = collapse(s).replace(/\([^)]*\)/g, ' ');
+  t = t.replace(/\b(gmbh|spa|s\.?a\.?|s\.?r\.?o\.?|s\.?p\.?a\.?|ag|b\.?v\.?|co\.?|kg|ltd|llc|s\/a)\b/gi, ' ');
+  t = t.replace(/&\s*co\.?\s*kg/gi, ' ');
+  t = t.replace(/[.,;]+$/, '').replace(/\s+/g, ' ').trim();
+  if (!t) return 'Other';
+  const isUpper = t === t.toUpperCase(), isLower = t === t.toLowerCase();
+  if ((isUpper || isLower) && t.length > 4) t = t.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  return t;
+}
+
+function normalizeCustomer(raw) {
+  const key = collapse(raw).toLowerCase();
+  if (!key) return 'Other';
+  if (custRegistry.has(key)) return custRegistry.get(key);
+  let name = null;
+  if (/^(yes|no|ok|hold|pending|total)$/i.test(key)) name = 'Other';
+  if (!name) { const r = CUST_RULES.find(r => r.re.test(collapse(raw))); if (r) name = r.name; }
+  if (!name && CUST_EXACT[key]) name = CUST_EXACT[key];
+  if (!name) name = genericCustomer(raw);
+  custRegistry.set(key, name);
+  return name;
+}
+
+function baseShortCode(code) {
+  return collapse(code).replace(/\([^)]*\)/g, '').replace(/[\s\-]+[Hh]?\d+$/g, '').replace(/[\s\-]+$/g, '').trim();
+}
+
+const COUNTRY_ALIAS = { 'nederland': 'Netherlands', 'netherland': 'Netherlands', 'netherlands': 'Netherlands',
+  'czech r': 'Czech Republic', 'czech r.': 'Czech Republic', 'czech republic': 'Czech Republic', 'czechia': 'Czech Republic' };
+function normCountry(raw) {
+  const k = collapse(raw).toLowerCase().replace(/\.$/, '');
+  if (!k) return 'Unspecified';
+  if (COUNTRY_ALIAS[k]) return COUNTRY_ALIAS[k];
+  if (/^(oa|so|poa|pso|0a)-/.test(k)) return 'Unspecified'; // leaked SO text
+  return collapse(raw);
+}
+
+// Qty may be a plain number, "24.3 71" (stray space) or "=22.96+4.66".
+function evalQty(raw, sheet, rowIdx, dq) {
+  if (raw == null || String(raw).trim() === '') return 0;
+  if (typeof raw === 'number') return isFinite(raw) ? raw : 0;
+  let s = String(raw).replace(/\s+/g, '').replace(/,/g, '');
+  if (s === '') return 0;
+  const n = Number(s);
+  if (isFinite(n)) return n;
+  if (s.charAt(0) === '=') {
+    const expr = s.slice(1);
+    if (/^[-+*/().0-9]+$/.test(expr)) {
+      try {
+        const val = Function('"use strict"; return (' + expr + ')')();
+        if (typeof val === 'number' && isFinite(val)) return val;
+      } catch (e) { /* fall through */ }
+    }
+    dq.push({ sheet, row: rowIdx, reason: 'unevaluable formula in Qty (Mt)', detail: String(raw) });
+    return 0;
+  }
+  dq.push({ sheet, row: rowIdx, reason: 'non-numeric Qty (Mt) — set to 0', detail: String(raw) });
+  return 0;
+}
+
+function findCol(labels, re, fallback) {
+  for (let i = 0; i < labels.length; i++) { if (re.test(collapse(labels[i]))) return i; }
+  return fallback;
+}
+
+// Split a possibly multi-SO cell ("SO-A SO-B", "S O-U3-…", newlines) into unique keys.
+function splitSoNumbers(raw) {
+  const toks = collapse(raw).split(' ').filter(Boolean);
+  const out = [];
+  for (let i = 0; i < toks.length; i++) {
+    // merge single stray letters into the following token ("S" + "O-U3-EXP-…" → "SO-U3-EXP-…")
+    if (i + 1 < toks.length && toks[i].length === 1 && !/-/.test(toks[i]) && /-/.test(toks[i + 1])) {
+      out.push(toks[i] + toks[i + 1]); i++;
+    } else out.push(toks[i]);
+  }
+  return out.map(s => s.replace(/[.,;]+$/, '').toUpperCase()).filter(s => /-/.test(s) || /^[A-Z0-9]{4,}$/.test(s));
+}
+
+function parseOrders(grid, dq) {
+  const L = grid.labels;
+  const C = {
+    month: findCol(L, /month/i, 0), date: findCol(L, /^date/i, 1),
+    customer: findCol(L, /customer/i, 2), short: findCol(L, /short/i, 3),
+    country: findCol(L, /country/i, 5), manager: findCol(L, /reporting/i, 6),
+    plant: findCol(L, /plant/i, 7), qty: findCol(L, /qty/i, 8),
+    opp: findCol(L, /opportunit/i, 9), sq: findCol(L, /sq\s*created/i, 10),
+    po: findCol(L, /po\s*rec/i, 11), soCreated: findCol(L, /so\s*created/i, 12),
+    soDate: findCol(L, /so\s*rec/i, 13), so: findCol(L, /so\s*number/i, 14),
+    signed: findCol(L, /signed/i, 15), remarks: findCol(L, /remarks/i, 16),
+    released: findCol(L, /released/i, 17), shipment: findCol(L, /shipment/i, 18),
+    salesRem: findCol(L, /sales\s*person/i, 19), sfDesc: findCol(L, /salesforce|description/i, 20),
+    delay: findCol(L, /delay/i, 21)
+  };
+  const out = [];
+  let curMonth = null;
+  let prev = null;   // last parsed row — used to inherit attributes on continuation lines
+  const now = currentFyMonth();
+  grid.rows.forEach((r, ri) => {
+    const cells = r.map(c => c == null ? '' : String(c).trim());
+    if (cells.every(c => !c)) return;                                   // spacer row
+    if (cells.slice(0, 12).some(c => /^total$/i.test(c))) return;       // total rows
+    const mv = cells[C.month];
+    if (mv) {
+      const m = normMonth(mv);
+      if (m) curMonth = m;
+      else dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'unrecognized value in Month column (kept prior month)', detail: mv });
+    }
+    const cust = cells[C.customer];
+    const soRaw = cells[C.so];
+    const qtyRaw = r[C.qty];
+    if (!cust && !soRaw && (qtyRaw == null || String(qtyRaw).trim() === '')) return; // nothing usable
+    // Continuation lines: some rows carry only SO numbers + qty with a blank customer.
+    // They inherit customer/short/country/manager from the row above (logged in data quality).
+    let custEff = cust, shortEff = cells[C.short], countryEff = cells[C.country], managerEff = cells[C.manager];
+    if (!cust && prev) {
+      custEff = prev.customerRaw;
+      shortEff = shortEff || prev.short;
+      countryEff = countryEff || prev.countryRaw;
+      managerEff = managerEff || prev.manager;
+      dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'blank customer — attributes inherited from previous row', detail: collapse(soRaw) || ('qty=' + qtyRaw) });
+    } else if (!cust) {
+      dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'blank customer name (no previous row to inherit from)', detail: collapse(soRaw) || '' });
+    } else if (/^(yes|no|ok|hold|pending)$/i.test(cust)) {
+      dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'suspect customer value — row appears misaligned', detail: cust });
+    }
+    const qty = evalQty(qtyRaw, 'FY27 Orders', ri + 2, dq);
+    const plantRaw = collapse(cells[C.plant]).toUpperCase().replace(/\s+/g, '');
+    let plant = 'Unassigned';
+    if (plantRaw === 'ASL') plant = 'ASL';
+    else if (plantRaw === 'ASIL') plant = 'ASIL';
+    else if (plantRaw === '') dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'blank plant — bucketed as Unassigned', detail: cust });
+    else { dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'unrecognized plant value — bucketed as Unassigned', detail: cells[C.plant] }); }
+    const country = normCountry(countryEff);
+    if (country === 'Unspecified' && collapse(cells[C.country]) === '')
+      dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'blank country', detail: custEff || cust });
+    const sos = splitSoNumbers(soRaw);
+    if (soRaw && !sos.length) dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'SO Number present but unparseable', detail: soRaw });
+    if (!curMonth) dq.push({ sheet: 'FY27 Orders', row: ri + 2, reason: 'row appears before any month label — month unknown', detail: cust });
+    out.push({
+      month: curMonth || '(Unknown)',
+      date: cells[C.date], customerRaw: custEff || cust, customer: (custEff || cust) ? normalizeCustomer(custEff || cust) : 'Other',
+      short: shortEff, country, manager: managerEff, plant, qty, sos,
+      soDisplay: collapse(soRaw), opp: cells[C.opp], sq: cells[C.sq], po: cells[C.po],
+      soCreated: cells[C.soCreated], soDate: cells[C.soDate], signed: collapse(cells[C.signed]),
+      remarks: cells[C.remarks], released: collapse(cells[C.released]), shipment: cells[C.shipment],
+      salesRem: cells[C.salesRem], sfDesc: cells[C.sfDesc], delay: cells[C.delay],
+      countryRaw: cells[C.country], inProgress: (curMonth === now), rowIdx: ri + 2
+    });
+    prev = out[out.length - 1];
+  });
+  return out;
+}
+
+// Loose date parsing: gviz "Date(y,m,d)", "2 Sep", "01-Oct-26", "M/D/YYYY".
+function parseLooseDate(v) {
+  if (v == null) return null;
+  if (v instanceof Date) return v;
+  const s = String(v).trim();
+  if (!s) return null;
+  let m = s.match(/^Date\((\d+),(\d+),(\d+)/);
+  if (m) return new Date(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,})\.?(?:[-\s]+(\d{2,4}))?/);
+  if (m) {
+    const mo = normMonth(m[2]);
+    if (mo) {
+      const mi = fiscalIdx(mo);
+      let yr = m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : 2026;
+      return new Date(yr, mi, +m[1]);
+    }
+  }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[1] - 1, +m[2]);
+  return null;
+}
+
+// DA day columns are day-of-month numbers within the block month.
+function daFullDate(v, monthName) {
+  if (v == null || String(v).trim() === '') return null;
+  const num = Number(String(v).replace(/\s+/g, ''));
+  if (isFinite(num) && num >= 1 && num <= 31) {
+    const mi = fiscalIdx(monthName);
+    return mi == null ? null : new Date(2026, mi, num);
+  }
+  return parseLooseDate(v);
+}
+
+function parseDa(grid, dq) {
+  const L = grid.labels.map(c => collapse(c));
+  let monthCols = [];
+  L.forEach((l, i) => { if (/^months?/i.test(l)) monthCols.push(i); });
+  if (monthCols.length < 2) {
+    for (const r of grid.rows) {
+      const idx = r.map((c, i) => /^months?$/i.test(collapse(c)) ? i : -1).filter(i => i >= 0);
+      if (idx.length >= 2) { monthCols = idx; break; }
+    }
+  }
+  if (monthCols.length < 2) { monthCols = [0, 11]; dq.push({ sheet: 'DA-2026-2027', row: '-', reason: 'assumption: block anchors not found, using columns A and L', detail: '' }); }
+  const aslLbl = L.findIndex(l => /^asl$/i.test(l)), asilLbl = L.findIndex(l => /^asil$/i.test(l));
+  const plantOf = start => {
+    if (aslLbl < 0 || asilLbl < 0) return null;
+    return Math.abs(start - aslLbl) < Math.abs(start - asilLbl) ? 'ASL' : 'ASIL';
+  };
+  const blocks = monthCols.slice(0, 2).map((start, i) => ({ start, plant: plantOf(start) || (i === 0 ? 'ASL' : 'ASIL') }));
+  if (aslLbl < 0) dq.push({ sheet: 'DA-2026-2027', row: '-', reason: 'assumption: ASL/ASIL block labels not found, assuming left block = ASL, right = ASIL', detail: '' });
+  const OFF = { da: 1, cust: 2, so: 3, qty: 4, dd: 5, ad: 6, days: 7, appr: 8, rem: 9 };
+  const out = [];
+  blocks.forEach(b => {
+    let curMonth = null;
+    grid.rows.forEach((r, ri) => {
+      const g = i => { const v = r[b.start + i]; return v == null ? '' : String(v).trim(); };
+      const rowAll = r.map(c => c == null ? '' : String(c).trim());
+      if (rowAll.every(c => !c)) return;
+      if (rowAll.some(c => /^total$/i.test(c))) return;
+      if (rowAll.some(c => /^da number$/i.test(c))) return;              // sub-header row
+      const mv = g(0);
+      if (mv) {
+        const m = normMonth(mv);
+        if (m) curMonth = m;
+        else dq.push({ sheet: 'DA-2026-2027', row: ri + 2, reason: 'unrecognized month label in DA block', detail: mv });
+      }
+      const daN = g(OFF.da), cust = g(OFF.cust), so = g(OFF.so), apprRaw = g(OFF.appr);
+      const qtyRaw = g(OFF.qty);
+      if (!daN && !so && !cust && !qtyRaw && !apprRaw) return;
+      if (!daN) { dq.push({ sheet: 'DA-2026-2027', row: ri + 2, reason: 'blank DA Number — row skipped', detail: (b.plant + ' · ' + (so || cust || '')) }); return; }
+      let approval = 'Pending';
+      if (apprRaw !== '') {
+        if (/yes/i.test(apprRaw)) approval = 'YES';
+        else if (/hold/i.test(apprRaw)) approval = 'HOLD';
+        else if (/cancel/i.test(apprRaw)) approval = 'Cancelled';
+        else if (/pending/i.test(apprRaw)) approval = 'Pending';
+        else { dq.push({ sheet: 'DA-2026-2027', row: ri + 2, reason: 'unexpected approval value — treated as Pending', detail: b.plant + ' · ' + apprRaw }); approval = 'Pending'; }
+      }
+      const soHas2627 = /2627/.test(so), soHas2526 = /2526/.test(so);
+      const fy26 = /^2526/.test(daN) || (soHas2526 && !soHas2627);
+      if (soHas2526 && soHas2627) dq.push({ sheet: 'DA-2026-2027', row: ri + 2, reason: 'row mixes FY26 & FY27 SO numbers — treated as FY27', detail: b.plant + ' · ' + daN });
+      if (/^#(VALUE|REF|DIV|N\/A|NAME)/i.test(so)) dq.push({ sheet: 'DA-2026-2027', row: ri + 2, reason: 'spreadsheet error value in SO Number', detail: b.plant + ' · ' + so });
+      let days = parseFloat(String(g(OFF.days)).replace(/\s+/g, ''));
+      if (!isFinite(days)) {
+        const da = daFullDate(g(OFF.dd), curMonth), ap = daFullDate(g(OFF.ad), curMonth);
+        if (da && ap) days = Math.round((ap - da) / dayMs);
+        else days = null;
+      }
+      if (days == null) dq.push({ sheet: 'DA-2026-2027', row: ri + 2, reason: 'DA days not computable (blank days and undated)', detail: b.plant + ' · ' + daN });
+      const code = baseShortCode(cust);
+      out.push({
+        plant: b.plant, month: curMonth || '(Unknown)', daNumber: daN, customer: cust,
+        customerNorm: STATE.shortMap[code] || normalizeCustomer(code || cust),
+        soNumber: so, qty: evalQty(qtyRaw, 'DA-2026-2027', ri + 2, dq),
+        daDate: daFullDate(g(OFF.dd), curMonth), approvalDate: daFullDate(g(OFF.ad), curMonth),
+        days, approval, remarks: g(OFF.rem), fy26, rowIdx: ri + 2
+      });
+    });
+  });
+  return out;
+}
+
+function buildShortMap(orders) {
+  const votes = {};
+  orders.forEach(o => {
+    const k = collapse(o.short).toUpperCase();
+    if (!k) return;
+    votes[k] = votes[k] || {};
+    votes[k][o.customer] = (votes[k][o.customer] || 0) + 1;
+  });
+  const map = {};
+  Object.keys(votes).forEach(k => {
+    map[k] = Object.keys(votes[k]).sort((a, b) => votes[k][b] - votes[k][a])[0];
+  });
+  // explicit additions for codes seen only in the DA tab
+  map['TKG'] = map['TKG'] || 'ThyssenKrupp Group';
+  return map;
+}
+
+function buildCustCountries(orders) {
+  const m = {};
+  orders.forEach(o => {
+    if (o.customer === 'Other') return;
+    m[o.customer] = m[o.customer] || new Set();
+    m[o.customer].add(o.country);
+  });
+  return m;
+}
+
+function dedupeDq(dq) {
+  const seen = new Set(), out = [];
+  dq.forEach(d => {
+    const k = d.sheet + '|' + d.row + '|' + d.reason + '|' + d.detail;
+    if (seen.has(k)) return;
+    seen.add(k); out.push(d);
+  });
+  return out;
+}
+
+function buildData(grids, fetchInfo) {
+  const dq = [];
+  const assumptions = [
+    'Month column is forward-filled from the first row of each month block; unrecognized values are logged in the issues table.',
+    'Customer names are normalized before aggregation (alias table + fuzzy families: Damstahl/DSS merged, ThyssenKrupp/TK Accelis merged, IMS variants → JMS Group, etc.).',
+    'Country aliases merged: Nederland/Netherland → Netherlands, "Czech R." → Czech Republic; blank → Unspecified.',
+    'Order rows with a blank customer but valid SO/Qty are treated as continuation lines: customer, short name, country and manager are inherited from the row above (each logged in the issues table).',
+    'DA rows whose SO numbers reference 2526 are FY26 history — excluded from turnaround/pending KPIs, shown as grey context in the status chart. Rows mixing 2526 & 2627 are treated as FY27.',
+    'DA date columns are day-of-month numbers; full dates are reconstructed as <month> <day> 2026 for pending-age calculation.',
+    'DA rows with a blank DA Number are skipped and listed in the issues table (they are usually extra SO lines of the DA above).',
+    'When a customer/country filter is active, DA rows whose short code cannot be resolved to a customer are kept (they cannot be attributed, and hiding them would distort turnaround KPIs).'
+  ];
+  const orders = parseOrders(grids.orders, dq);
+  STATE.shortMap = buildShortMap(orders);
+  STATE.custCountries = buildCustCountries(orders);
+  const da = parseDa(grids.da, dq);
+  const nBlankDa = dq.filter(d => /blank DA Number/.test(d.reason)).length;
+  if (nBlankDa) assumptions.push(nBlankDa + ' DA rows had a blank DA Number and were skipped.');
+  return {
+    orders, da, dq: dedupeDq(dq), assumptions,
+    fetchedAt: new Date().toISOString(), fetchInfo: fetchInfo || {}
+  };
+}
+
+/* ###################################################################################### */
+/* <!-- FILTERS -->                                                                        */
+/* ###################################################################################### */
+
+function monthAxis() {
+  const present = new Set();
+  (STATE.data ? STATE.data.orders : []).forEach(o => present.add(o.month));
+  (STATE.data ? STATE.data.da : []).forEach(d => present.add(d.month));
+  const inH1 = CONFIG.monthOrder.filter(m => present.has(m));
+  const extras = CONFIG.fiscalFull.filter(m => present.has(m) && !CONFIG.monthOrder.includes(m));
+  const unknown = present.has('(Unknown)') ? ['(Unknown)'] : [];
+  return inH1.concat(extras, unknown);
+}
+
+function filteredOrders() {
+  const F = STATE.filters;
+  return (STATE.data ? STATE.data.orders : []).filter(o =>
+    (F.months.size === 0 || F.months.has(o.month)) &&
+    (F.plant === 'All' || o.plant === F.plant) &&
+    (F.countries.size === 0 || F.countries.has(o.country)) &&
+    (F.customers.size === 0 || F.customers.has(o.customer))
+  );
+}
+
+function filteredDa() {
+  const F = STATE.filters;
+  return (STATE.data ? STATE.data.da : []).filter(d => {
+    if (F.months.size && !F.months.has(d.month)) return false;
+    if (F.plant !== 'All' && d.plant !== F.plant) return false;
+    if (F.customers.size && d.customerNorm && !F.customers.has(d.customerNorm)) return false;
+    if (F.countries.size) {
+      const cs = STATE.custCountries[d.customerNorm];
+      if (cs && !Array.from(cs).some(c => F.countries.has(c))) return false;
+    }
+    return true;
+  });
+}
+
+function toggleSet(set, v) { if (set.has(v)) set.delete(v); else set.add(v); }
+
+function applyFilterChange() {
+  STATE.page = 1;
+  renderAll(false);
+  if (hasGsap()) gsap.fromTo('#dashWrap .card', { opacity: 0.45, x: -6 }, { opacity: 1, x: 0, duration: 0.3, ease: 'power1.out', stagger: 0.015, overwrite: true, clearProps: 'all' });
+}
+
+function buildFilterOptions() {
+  // month chips
+  const axis = monthAxis();
+  const mc = $('#monthChips');
+  mc.innerHTML = '';
+  axis.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (STATE.filters.months.has(m) ? ' on' : '');
+    b.textContent = CONFIG.monthShort[m] || m;
+    b.title = m;
+    b.dataset.m = m;
+    b.onclick = () => { toggleSet(STATE.filters.months, m); applyFilterChange(); };
+    mc.appendChild(b);
+  });
+  // country list
+  const agg = {};
+  STATE.data.orders.forEach(o => { agg[o.country] = (agg[o.country] || 0) + o.qty; });
+  const countries = Object.keys(agg).sort((a, b) => agg[b] - agg[a]);
+  const cl = $('#countryList');
+  cl.innerHTML = countries.length ? '' : '<div style="padding:6px;color:var(--sub);font-size:12px;">No countries</div>';
+  countries.forEach(c => {
+    const lab = document.createElement('label');
+    lab.className = 'opt';
+    lab.innerHTML = '<input type="checkbox" data-v="' + esc(c) + '" ' + (STATE.filters.countries.has(c) ? 'checked' : '') + '><span>' + esc(c) + '</span><span class="cnt">' + fmt(agg[c]) + ' Mt</span>';
+    lab.querySelector('input').onchange = e => {
+      const v = e.target.dataset.v;
+      if (e.target.checked) STATE.filters.countries.add(v); else STATE.filters.countries.delete(v);
+      applyFilterChange();
+    };
+    cl.appendChild(lab);
+  });
+  // customer list (sorted by Mt)
+  const cagg = {};
+  STATE.data.orders.forEach(o => {
+    cagg[o.customer] = cagg[o.customer] || { mt: 0, n: 0 };
+    cagg[o.customer].mt += o.qty; cagg[o.customer].n++;
+  });
+  STATE._custAggAll = cagg;
+  const custs = Object.keys(cagg).sort((a, b) => cagg[b].mt - cagg[a].mt);
+  STATE._custList = custs;
+  renderCustList('');
+  syncFilterUI();
+}
+
+function renderCustList(q) {
+  const cl = $('#custList');
+  cl.innerHTML = '';
+  const qq = q.trim().toLowerCase();
+  const custs = (STATE._custList || []).filter(c => !qq || c.toLowerCase().includes(qq));
+  if (!custs.length) { cl.innerHTML = '<div style="padding:6px;color:var(--sub);font-size:12px;">No match</div>'; return; }
+  custs.forEach(c => {
+    const lab = document.createElement('label');
+    lab.className = 'opt';
+    lab.innerHTML = '<input type="checkbox" data-v="' + esc(c) + '" ' + (STATE.filters.customers.has(c) ? 'checked' : '') + '><span>' + esc(c) + '</span><span class="cnt">' + fmt(STATE._custAggAll[c].mt) + ' Mt</span>';
+    lab.querySelector('input').onchange = e => {
+      const v = e.target.dataset.v;
+      if (e.target.checked) STATE.filters.customers.add(v); else STATE.filters.customers.delete(v);
+      applyFilterChange();
+    };
+    cl.appendChild(lab);
+  });
+}
+
+function syncFilterUI() {
+  const F = STATE.filters;
+  $$('#monthChips .chip').forEach(b => b.classList.toggle('on', F.months.has(b.dataset.m)));
+  $$('#plantSeg button').forEach(b => b.classList.toggle('on', b.dataset.plant === F.plant));
+  $('#countryBtn').innerHTML = F.countries.size
+    ? 'Country: <span class="n">' + F.countries.size + '</span> selected ▾'
+    : 'Country: All ▾';
+  $('#custBtn').innerHTML = F.customers.size
+    ? 'Customer: <span class="n">' + F.customers.size + '</span> selected ▾'
+    : 'Customer: All ▾';
+}
+
+function resetFilters() {
+  STATE.filters = { months: new Set(), plant: 'All', countries: new Set(), customers: new Set() };
+  STATE.search = ''; $('#tableSearch').value = '';
+  STATE.page = 1;
+  buildFilterOptions();
+  renderAll(false);
+  toast('Filters reset', 'ok');
+}
+
+/* ###################################################################################### */
+/* <!-- KPI -->                                                                            */
+/* ###################################################################################### */
+
+function computeKpis(orders, da) {
+  const axis = monthAxis();
+  const monthAgg = {}; orders.forEach(o => { monthAgg[o.month] = monthAgg[o.month] || { mt: 0, n: 0 }; monthAgg[o.month].mt += o.qty; monthAgg[o.month].n++; });
+  const totalMt = orders.reduce((s, o) => s + o.qty, 0);
+  // MoM vs prior month (latest month with data)
+  let latest = null;
+  axis.forEach(m => { if (monthAgg[m] && monthAgg[m].n > 0) latest = m; });
+  let mom = null, momPair = null;
+  if (latest != null) {
+    const li = axis.indexOf(latest);
+    if (li > 0) {
+      const prevM = axis[li - 1], prev = (monthAgg[prevM] || {}).mt || 0, cur = monthAgg[latest].mt;
+      if (prev > 0) { mom = (cur - prev) / prev * 100; momPair = { cur: latest, prev: prevM }; }
+    }
+  }
+  // unique SO numbers
+  const soSet = new Set(); orders.forEach(o => o.sos.forEach(s => soSet.add(s)));
+  // plant split
+  const split = { ASL: 0, ASIL: 0, Unassigned: 0 };
+  orders.forEach(o => { split[o.plant] = (split[o.plant] || 0) + o.qty; });
+  // DA KPIs
+  const daYes27 = da.filter(d => d.approval === 'YES' && !d.fy26 && d.days != null);
+  const avgDa = daYes27.length ? daYes27.reduce((s, d) => s + d.days, 0) / daYes27.length : null;
+  const pend27 = da.filter(d => !d.fy26 && (d.approval === 'Pending' || d.approval === 'HOLD'));
+  let oldest = null;
+  const now = Date.now();
+  pend27.forEach(d => {
+    if (d.daDate) { const age = Math.floor((now - new Date(d.daDate).getTime()) / dayMs); if (oldest == null || age > oldest) oldest = age; }
+  });
+  // customer concentration
+  const cagg = {}; orders.forEach(o => {
+    cagg[o.customer] = cagg[o.customer] || { mt: 0, orders: new Set(), countries: new Set() };
+    cagg[o.customer].mt += o.qty;
+    o.sos.forEach(s => cagg[o.customer].orders.add(s));
+    cagg[o.customer].countries.add(o.country);
+  });
+  const custRank = Object.keys(cagg).map(c => ({ c, mt: cagg[c].mt })).sort((a, b) => b.mt - a.mt);
+  const top5 = custRank.slice(0, 5).reduce((s, x) => s + x.mt, 0);
+  return {
+    totalMt, monthAgg, mom, momPair, latest, orderCount: soSet.size, lineItems: orders.length,
+    split, avgDa, daYesCount: daYes27.length, pending: pend27.length, oldest,
+    conc: totalMt > 0 ? top5 / totalMt * 100 : null, custCount: custRank.length, custAgg: cagg, custRank, axis
+  };
+}
+
+function renderKpis() {
+  const orders = filteredOrders(), da = filteredDa();
+  const k = computeKpis(orders, da);
+  STATE.kpi = k;
+  $('#kpiTotal').textContent = fmt(k.totalMt);
+  $('#kpiTotalCtx').innerHTML = k.mom == null
+    ? 'No prior-month comparison available'
+    : 'vs ' + (CONFIG.monthShort[k.momPair.prev] || k.momPair.prev) + ': <b>' + fmtPct(k.mom) + '</b>' + (k.latest ? ' (' + (CONFIG.monthShort[k.latest] || k.latest) + ' vs ' + (CONFIG.monthShort[k.momPair.prev] || k.momPair.prev) + ')' : '');
+  $('#kpiOrders').textContent = fmtInt(k.orderCount);
+  $('#kpiOrdersCtx').innerHTML = k.lineItems + ' line items in view';
+  // plant split tile
+  const tot = k.split.ASL + k.split.ASIL + k.split.Unassigned;
+  if (STATE.filters.plant !== 'All') {
+    const p = STATE.filters.plant;
+    $('#kpiSplit').textContent = fmt(k.split[p] || 0);
+    $('#splitBars').innerHTML = '<div class="sb"><span class="nm">' + p + '</span><span class="bar" style="width:100%;background:' + (PLANT_COLORS[p] || '#94A3B8') + '"></span><span class="tx">' + fmt(k.split[p] || 0) + ' Mt · 100%</span></div>' + (k.split.Unassigned > 0 && p !== 'Unassigned' ? '<div class="sb"><span class="nm">Unassigned</span><span class="tx">' + fmt(k.split.Unassigned) + ' Mt filtered out</span></div>' : '');
+    $('#kpiSplitCtx').innerHTML = 'Filtered to ' + p;
+  } else {
+    $('#kpiSplit').textContent = tot > 0 ? Math.round(k.split.ASL / Math.max(tot, 1) * 100) + ' : ' + Math.round(k.split.ASIL / Math.max(tot, 1) * 100) : '—';
+    $('#splitBars').innerHTML = ['ASL', 'ASIL'].map(p => {
+      const pct = tot > 0 ? k.split[p] / tot * 100 : 0;
+      return '<div class="sb' + (p === 'ASIL' ? ' asil' : '') + '"><span class="nm">' + p + '</span><span class="bar" style="width:' + Math.max(pct, 1.5) + '%"></span><span class="tx">' + fmt(k.split[p]) + ' Mt · ' + pct.toFixed(1) + '%</span></div>';
+    }).join('') + (k.split.Unassigned > 0 ? '<div class="sb"><span class="nm">Unassigned</span><span class="tx">' + fmt(k.split.Unassigned) + ' Mt</span></div>' : '');
+    $('#kpiSplitCtx').innerHTML = 'of ' + fmt(tot) + ' Mt in view';
+  }
+  // DA turnaround
+  $('#kpiDa').textContent = k.avgDa == null ? '—' : k.avgDa.toFixed(1);
+  const sla = $('#kpiSla');
+  if (k.avgDa == null) { sla.textContent = 'no data'; sla.className = 'badge'; }
+  else if (k.avgDa <= CONFIG.slaDays) { sla.textContent = 'SLA met (≤' + CONFIG.slaDays + 'd)'; sla.className = 'badge g'; }
+  else if (k.avgDa <= 5) { sla.textContent = 'SLA at risk (3–5d)'; sla.className = 'badge a'; }
+  else { sla.textContent = 'SLA breach (>5d)'; sla.className = 'badge r'; }
+  $('#kpiDaCtx').innerHTML = k.daYesCount + ' approved FY27 DAs';
+  // pending
+  $('#kpiPending').textContent = fmtInt(k.pending);
+  $('#kpiPendingCtx').innerHTML = k.oldest == null ? 'ages unavailable' : 'oldest pending: <b>' + k.oldest + ' days</b>';
+  // concentration
+  $('#kpiConc').textContent = k.conc == null ? '—' : k.conc.toFixed(1) + '%';
+  $('#kpiConcCtx').innerHTML = 'across ' + k.custCount + ' distinct customers';
+}
+
+/* ###################################################################################### */
+/* <!-- CHARTS -->                                                                         */
+/* ###################################################################################### */
+
+const PLOT_FONT = { family: '-apple-system,"Segoe UI",Roboto,sans-serif', size: 11, color: '#6B7280' };
+const baseLayout = extra => Object.assign({
+  margin: { l: 46, r: 46, t: 12, b: 34 }, font: PLOT_FONT,
+  paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+  xaxis: { gridcolor: '#F1F3F5', zerolinecolor: '#E5E7EB' },
+  yaxis: { gridcolor: '#F1F3F5', zerolinecolor: '#E5E7EB' },
+  dragmode: false, hovermode: 'closest', showlegend: false
+}, extra || {});
+const PLOT_CFG = { displayModeBar: false, responsive: true, doubleClick: false };
+
+function bindClick(gd, fn) {
+  if (gd._vibeClick) return;
+  gd._vibeClick = true;
+  gd.on('plotly_click', fn);
+}
+const muted = '#D7DBE0';
+const selColor = (active, val, set, accent) => (!active || set.has(val)) ? accent : muted;
+
+function renderCharts() {
+  if (typeof Plotly === 'undefined') return;
+  const orders = filteredOrders(), da = filteredDa();
+  const k = STATE.kpi || computeKpis(orders, da);
+  const axis = k.axis;
+  const F = STATE.filters;
+
+  /* ---- Slide 1: Monthly intake + MoM% ---- */
+  (function () {
+    const mt = axis.map(m => (k.monthAgg[m] || {}).mt || 0);
+    const rows = axis.map(m => (k.monthAgg[m] || {}).n || 0);
+    const now = currentFyMonth();
+    const inProg = axis.map(m => rows[axis.indexOf(m)] < 5 || m === now);
+    const selActive = F.months.size > 0;
+    const colors = axis.map(m => selColor(selActive, m, F.months, '#0F766E'));
+    const mom = axis.map((m, i) => {
+      if (i === 0) return null;
+      const prev = mt[i - 1], cur = mt[i];
+      if (!prev) return null;
+      return (cur - prev) / prev * 100;
+    });
+    const hover = axis.map((m, i) =>
+      '<b>' + m + '</b><br>' + fmt(mt[i]) + ' Mt · ' + rows[i] + ' line items' +
+      (mom[i] != null ? '<br>MoM: ' + fmtPct(mom[i]) : '') +
+      (inProg[i] ? '<br>⚠ in progress' : '') + '<extra></extra>');
+    const traces = [
+      { type: 'bar', x: axis, y: mt, marker: { color: colors, line: { color: '#fff', width: 0 } },
+        text: axis.map((m, i) => fmt(mt[i])), textposition: 'outside', textfont: { size: 10, color: '#6B7280' },
+        hovertemplate: hover, cliponaxis: false },
+      { type: 'bar', x: axis, y: axis.map((m, i) => inProg[i] ? mt[i] : null), hoverinfo: 'skip',
+        marker: { color: 'rgba(0,0,0,0)', line: { color: '#B45309', width: 1.4, dash: 'dash' } } },
+      { type: 'scatter', mode: 'lines+markers', x: axis, y: mom, yaxis: 'y2', line: { color: '#B45309', width: 2 }, marker: { size: 5 },
+        hovertemplate: '%{x}<br>MoM %{y:.1f}%<extra></extra>' }
+    ];
+    Plotly.react('chartMonthly', traces, baseLayout({
+      barmode: 'overlay', bargap: 0.38,
+      yaxis: { title: { text: 'Mt', font: { size: 10 } }, gridcolor: '#F1F3F5' },
+      yaxis2: { overlaying: 'y', side: 'right', showgrid: false, zeroline: false, tickfont: { size: 10 }, ticksuffix: '%' },
+      legend: { show: false }
+    }), PLOT_CFG);
+    bindClick(document.getElementById('chartMonthly'), ev => {
+      const m = ev.points[0].x;
+      if (m) { toggleSet(F.months, m); applyFilterChange(); }
+    });
+  })();
+
+  /* ---- Slide 2: plant donut + custom legend ---- */
+  (function () {
+    const plants = ['ASL', 'ASIL', 'Unassigned'].filter(p => (k.split[p] || 0) > 0);
+    const vals = plants.map(p => k.split[p]);
+    const tot = vals.reduce((s, v) => s + v, 0);
+    const plantActive = F.plant !== 'All';
+    Plotly.react('chartPlant', [{
+      type: 'pie', hole: 0.62, labels: plants, values: vals, sort: false, textinfo: 'none',
+      marker: { colors: plants.map(p => (plantActive && F.plant !== p) ? muted : PLANT_COLORS[p]),
+                line: { color: '#fff', width: 2 } },
+      hovertemplate: '<b>%{label}</b><br>' + '%{value:.1f} Mt (%{percent})<extra></extra>'
+    }], baseLayout({
+      annotations: [{ text: '<b>' + fmt(tot) + '</b><br><span style="font-size:10px;color:#6B7280">Mt total</span>',
+        x: 0.5, y: 0.5, showarrow: false, font: { size: 16 } }],
+      margin: { l: 10, r: 10, t: 10, b: 10 }
+    }), PLOT_CFG);
+    bindClick(document.getElementById('chartPlant'), ev => {
+      const tr = ev.points[0];
+      const label = tr.data.labels[tr.pointNumber];
+      if (label === 'ASL' || label === 'ASIL') { F.plant = (F.plant === label) ? 'All' : label; applyFilterChange(); }
+    });
+    $('#plantLegend').innerHTML = plants.map(p => {
+      const pct = tot > 0 ? (k.split[p] / tot * 100) : 0;
+      return '<div class="pl" data-plant="' + p + '"><span class="sw" style="background:' + PLANT_COLORS[p] + '"></span>' +
+        '<b>' + p + '</b><span class="mt">' + fmt(k.split[p]) + ' Mt · ' + pct.toFixed(1) + '%</span></div>';
+    }).join('');
+    $$('#plantLegend .pl').forEach(el => el.onclick = () => {
+      const p = el.dataset.plant;
+      if (p === 'ASL' || p === 'ASIL') { F.plant = (F.plant === p) ? 'All' : p; applyFilterChange(); }
+    });
+  })();
+
+  /* ---- Slide 2: top 10 customers ---- */
+  (function () {
+    const rank = k.custRank.slice(0, 10);
+    const asc = rank.slice().reverse();
+    const tot = k.totalMt || 1;
+    const active = F.customers.size > 0;
+    Plotly.react('chartTop', [{
+      type: 'bar', orientation: 'h',
+      x: asc.map(r => r.mt), y: asc.map(r => r.c),
+      marker: { color: asc.map(r => selColor(active, r.c, F.customers, '#0F766E')) },
+      text: asc.map(r => fmt(r.mt) + ' (' + (r.mt / tot * 100).toFixed(1) + '%)'), textposition: 'outside',
+      textfont: { size: 9.5, color: '#6B7280' }, cliponaxis: false,
+      hovertemplate: asc.map(r => {
+        const a = k.custAgg[r.c];
+        const cs = Array.from(a.countries).join(', ');
+        return '<b>' + r.c + '</b><br>' + fmt(r.mt) + ' Mt (' + (r.mt / tot * 100).toFixed(1) + '% of view)' +
+          '<br>Orders: ' + a.orders.size + '<br>Countries: ' + (cs || '—') + '<extra></extra>';
+      })
+    }], baseLayout({
+      margin: { l: 130, r: 60, t: 8, b: 26 },
+      xaxis: { gridcolor: '#F1F3F5', tickfont: { size: 10 } },
+      yaxis: { tickfont: { size: 10.5 }, automargin: false }
+    }), PLOT_CFG);
+    bindClick(document.getElementById('chartTop'), ev => {
+      const c = ev.points[0].y;
+      if (c) { toggleSet(F.customers, c); applyFilterChange(); }
+    });
+  })();
+
+  /* ---- Slide 2: country distribution ---- */
+  (function () {
+    const agg = {};
+    orders.forEach(o => {
+      agg[o.country] = agg[o.country] || { mt: 0, custs: new Set() };
+      agg[o.country].mt += o.qty; agg[o.country].custs.add(o.customer);
+    });
+    const list = Object.keys(agg).map(c => ({ c, mt: agg[c].mt, n: agg[c].custs.size })).sort((a, b) => b.mt - a.mt).slice(0, 14).reverse();
+    const active = F.countries.size > 0;
+    Plotly.react('chartCountry', [{
+      type: 'bar', orientation: 'h',
+      x: list.map(r => r.mt), y: list.map(r => r.c),
+      marker: { color: list.map(r => selColor(active, r.c, F.countries, '#B45309')) },
+      text: list.map(r => fmt(r.mt)), textposition: 'outside', textfont: { size: 9.5, color: '#6B7280' }, cliponaxis: false,
+      hovertemplate: list.map(r => '<b>' + r.c + '</b><br>' + fmt(r.mt) + ' Mt<br>Customers: ' + r.n + '<extra></extra>')
+    }], baseLayout({
+      margin: { l: 110, r: 50, t: 8, b: 26 },
+      xaxis: { gridcolor: '#F1F3F5', tickfont: { size: 10 } },
+      yaxis: { tickfont: { size: 10.5 } }
+    }), PLOT_CFG);
+    bindClick(document.getElementById('chartCountry'), ev => {
+      const c = ev.points[0].y;
+      if (c) { toggleSet(F.countries, c); applyFilterChange(); }
+    });
+  })();
+
+  /* ---- Slide 3: DA turnaround trend ---- */
+  (function () {
+    const yes27 = da.filter(d => d.approval === 'YES' && !d.fy26 && d.days != null);
+    const avg = axis.map(m => {
+      const rows = yes27.filter(d => d.month === m);
+      return rows.length ? rows.reduce((s, d) => s + d.days, 0) / rows.length : null;
+    });
+    const cnt27 = axis.map(m => da.filter(d => !d.fy26 && d.month === m).length);
+    const selActive = F.months.size > 0;
+    const colorOf = v => v == null ? muted : (v <= CONFIG.slaDays ? '#15803D' : (v <= 5 ? '#D97706' : '#B91C1C'));
+    Plotly.react('chartDaTrend', [
+      { type: 'bar', x: axis, y: avg, marker: { color: axis.map((m, i) => selActive && !F.months.has(m) ? muted : colorOf(avg[i])) },
+        text: axis.map((m, i) => avg[i] == null ? '' : avg[i].toFixed(1)), textposition: 'outside', textfont: { size: 10, color: '#6B7280' }, cliponaxis: false,
+        hovertemplate: axis.map((m, i) => '<b>' + m + '</b><br>avg ' + (avg[i] == null ? 'no approved DAs' : avg[i].toFixed(1) + ' days') + '<extra></extra>') },
+      { type: 'scatter', mode: 'lines', x: axis, y: cnt27, yaxis: 'y2', line: { color: '#94A3B8', width: 1.5 }, opacity: 0.55,
+        hovertemplate: axis.map((m, i) => m + '<br>' + cnt27[i] + ' FY27 DA rows<extra></extra>') }
+    ], baseLayout({
+      bargap: 0.38,
+      yaxis: { title: { text: 'days', font: { size: 10 } }, range: [0, Math.max(6, Math.max.apply(null, avg.map(v => v || 0)) * 1.2)] },
+      yaxis2: { overlaying: 'y', side: 'right', showgrid: false, zeroline: false, tickfont: { size: 9.5 } },
+      shapes: [{ type: 'line', x0: -0.45, x1: axis.length - 0.55, y0: CONFIG.slaDays, y1: CONFIG.slaDays,
+        line: { color: '#B91C1C', width: 1.4, dash: 'dash' }, xref: 'x', yref: 'y' }],
+      annotations: [{ x: axis.length - 0.55, y: CONFIG.slaDays, xref: 'x', yref: 'y', text: 'SLA 3d', showarrow: false,
+        font: { size: 9.5, color: '#B91C1C' }, xanchor: 'right', yanchor: 'bottom' }]
+    }), PLOT_CFG);
+    bindClick(document.getElementById('chartDaTrend'), ev => {
+      const m = ev.points[0].x;
+      if (m) { toggleSet(F.months, m); applyFilterChange(); }
+    });
+  })();
+
+  /* ---- Slide 3: DA status stacked bar (FY26 as grey context) ---- */
+  (function () {
+    const cats = ['Approved', 'Pending', 'HOLD', 'Cancelled', 'FY26 (context)'];
+    const cnt = {};
+    cats.forEach(c => cnt[c] = axis.map(() => 0));
+    da.forEach(d => {
+      const i = axis.indexOf(d.month);
+      if (i < 0) return;
+      if (d.fy26) cnt['FY26 (context)'][i]++;
+      else if (d.approval === 'YES') cnt.Approved[i]++;
+      else if (d.approval === 'HOLD') cnt.HOLD[i]++;
+      else if (d.approval === 'Cancelled') cnt.Cancelled[i]++;
+      else cnt.Pending[i]++;
+    });
+    const selActive = F.months.size > 0;
+    const traces = cats.map(c => ({
+      type: 'bar', name: c, x: axis, y: cnt[c],
+      marker: { color: STATUS_COLORS[c] },
+      hovertemplate: axis.map((m, i) => {
+        const fy27tot = cnt.Approved[i] + cnt.Pending[i] + cnt.HOLD[i] + cnt.Cancelled[i];
+        const pct = c === 'FY26 (context)' ? '' : (fy27tot ? ' (' + (cnt[c][i] / fy27tot * 100).toFixed(0) + '% of FY27 month)' : '');
+        return '<b>' + m + '</b><br>' + c + ': ' + cnt[c][i] + pct + '<extra></extra>';
+      })
+    }));
+    Plotly.react('chartDaStatus', traces, baseLayout({
+      barmode: 'stack', bargap: 0.38,
+      showlegend: true, legend: { orientation: 'h', y: 1.12, font: { size: 10 } },
+      yaxis: { gridcolor: '#F1F3F5', title: { text: 'DA rows', font: { size: 10 } } }
+    }), PLOT_CFG);
+    bindClick(document.getElementById('chartDaStatus'), ev => {
+      const m = ev.points[0].x;
+      if (m) { toggleSet(F.months, m); applyFilterChange(); }
+    });
+  })();
+}
+
+/* ###################################################################################### */
+/* <!-- CAROUSEL -->  Swiper init + slide entry animations                                  */
+/* ###################################################################################### */
+
+function animateSlide(slide) {
+  if (!hasGsap() || !slide) return;
+  const els = slide.querySelectorAll('.anim');
+  if (els.length) gsap.fromTo(els, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', stagger: 0.05, overwrite: true, clearProps: 'opacity,transform' });
+}
+
+function initSwiper() {
+  if (typeof Swiper === 'undefined') return;
+  STATE.swiper = new Swiper('#dashSwiper', {
+    slidesPerView: 1, spaceBetween: 0, speed: 600, effect: 'slide', grabCursor: true,
+    pagination: { el: '.swiper-pagination', clickable: true, type: 'bullets' },
+    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+    keyboard: { enabled: true },
+    mousewheel: { forceToAxis: true },
+    on: {
+      afterInit: s => animateSlide(s.slides[s.activeIndex]),
+      slideChangeTransitionEnd: s => animateSlide(s.slides[s.activeIndex])
+    }
+  });
+  // charts: keep Plotly sizing correct after container size settles
+  setTimeout(() => { if (typeof Plotly !== 'undefined') $$('.chart').forEach(c => { try { Plotly.Plots.resize(c); } catch (e) {} }); }, 400);
+}
+
+let rzT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(rzT);
+  rzT = setTimeout(() => { if (typeof Plotly !== 'undefined') $$('.chart').forEach(c => { try { Plotly.Plots.resize(c); } catch (e) {} }); }, 250);
+});
+
+/* ###################################################################################### */
+/* <!-- TABLE & DRAWER -->                                                                  */
+/* ###################################################################################### */
+
+const TCOLS = [
+  { key: 'month', label: 'Month' }, { key: 'customer', label: 'Customer' }, { key: 'short', label: 'Short Name' },
+  { key: 'country', label: 'Country' }, { key: 'plant', label: 'Plant' }, { key: 'qty', label: 'Qty (Mt)', num: true },
+  { key: 'soDisplay', label: 'SO Number' }, { key: 'released', label: 'Released' }, { key: 'shipment', label: 'Shipment Date' }
+];
+
+function renderTableHead() {
+  $('#tHead').innerHTML = TCOLS.map(c => {
+    const on = STATE.sort.key === c.key;
+    return '<th data-key="' + c.key + '">' + c.label + (on ? ' <span class="arr">' + (STATE.sort.dir === 1 ? '▲' : '▼') + '</span>' : '') + '</th>';
+  }).join('');
+  $$('#tHead th').forEach(th => th.onclick = () => {
+    const key = th.dataset.key;
+    if (STATE.sort.key === key) STATE.sort.dir *= -1; else { STATE.sort.key = key; STATE.sort.dir = 1; }
+    renderTable();
+  });
+}
+
+function tableRows() {
+  const F = STATE.filters;
+  let rows = filteredOrders();
+  const q = STATE.search.trim().toLowerCase();
+  if (q) rows = rows.filter(o =>
+    (o.customer + ' ' + o.customerRaw + ' ' + o.short + ' ' + o.soDisplay + ' ' + o.country + ' ' + o.plant).toLowerCase().includes(q));
+  const ax = monthAxis();
+  const mi = m => { const i = ax.indexOf(m); return i < 0 ? 99 : i; };
+  const key = STATE.sort.key, dir = STATE.sort.dir;
+  rows = rows.slice().sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (key === 'month') { va = mi(a.month); vb = mi(b.month); }
+    if (key === 'qty') { va = a.qty; vb = b.qty; }
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va || '').localeCompare(String(vb || '')) * dir;
+  });
+  return rows;
+}
+
+function renderTable() {
+  renderTableHead();
+  const rows = tableRows();
+  const pages = Math.max(1, Math.ceil(rows.length / STATE.pageSize));
+  if (STATE.page > pages) STATE.page = pages;
+  const start = (STATE.page - 1) * STATE.pageSize;
+  const view = rows.slice(start, start + STATE.pageSize);
+  $('#tBody').innerHTML = view.map((o, i) =>
+    '<tr data-i="' + (start + i) + '">' +
+    '<td>' + esc(o.month) + (o.inProgress ? ' <span class="tag">live</span>' : '') + '</td>' +
+    '<td>' + esc(o.customer) + '</td>' +
+    '<td>' + esc(o.short) + '</td>' +
+    '<td>' + esc(o.country) + '</td>' +
+    '<td><span class="pdot" style="background:' + (PLANT_COLORS[o.plant] || '#94A3B8') + '"></span>' + esc(o.plant) + '</td>' +
+    '<td class="num">' + fmt(o.qty) + '</td>' +
+    '<td>' + esc(o.soDisplay) + '</td>' +
+    '<td>' + esc(o.released) + '</td>' +
+    '<td>' + esc(o.shipment) + '</td>' +
+    '</tr>').join('');
+  $('#rowInfo').textContent = rows.length + ' rows' + (STATE.search ? ' (filtered by search)' : '');
+  $('#pagInfo').textContent = 'Page ' + STATE.page + ' / ' + pages;
+  $('#pagPrev').disabled = $('#pagFirst').disabled = STATE.page <= 1;
+  $('#pagNext').disabled = $('#pagLast').disabled = STATE.page >= pages;
+  STATE._rows = rows;
+  $$('#tBody tr').forEach(tr => tr.onclick = () => openDrawer(rows[+tr.dataset.i]));
+}
+
+function openDrawer(o) {
+  if (!o) return;
+  $('#drawerTitle').textContent = o.customer + ' — ' + fmt(o.qty) + ' Mt';
+  const fields = [
+    ['Month', o.month + (o.inProgress ? ' (in progress)' : '')], ['Date (of month)', o.date],
+    ['Customer (raw)', o.customerRaw], ['Customer (normalized)', o.customer], ['Short Name', o.short],
+    ['Country', o.country], ['Reporting Manager', o.manager], ['Plant', o.plant], ['Qty (Mt)', fmt(o.qty)],
+    ['Opportunity id', o.opp], ['SQ Created', o.sq], ['PO received', o.po], ['SO Created', o.soCreated],
+    ['SO Received Date', o.soDate], ['SO Number', o.soDisplay], ['Signed SO Status', o.signed],
+    ['Remarks', o.remarks], ['Released', o.released], ['Shipment Date', o.shipment],
+    ['Sales Person Remarks', o.salesRem], ['Salesforce Description', o.sfDesc], ['Delay (days)', o.delay],
+    ['Sheet row', '#' + o.rowIdx]
+  ];
+  $('#drawerBody').innerHTML = fields.map(f =>
+    '<div class="drow"><div class="k">' + f[0] + '</div><div class="val">' + (esc(f[1]) || '—') + '</div></div>').join('');
+  $('#drawer').classList.add('open');
+  $('#drawerBackdrop').style.display = 'block';
+  if (hasGsap()) gsap.fromTo('#drawerBody', { x: 14, opacity: 0 }, { x: 0, opacity: 1, duration: 0.25, ease: 'power1.out' });
+}
+function closeDrawer() { $('#drawer').classList.remove('open'); $('#drawerBackdrop').style.display = 'none'; }
+
+/* ###################################################################################### */
+/* <!-- DATA QUALITY PANEL -->                                                             */
+/* ###################################################################################### */
+
+function updateFetchInfo(ok, partial) {
+  STATE._fetchStatus = {
+    ok, partial,
+    lastOk: STATE.lastFetchOk ? STATE.lastFetchOk.toLocaleString() : 'never',
+    next: STATE.nextRefresh ? STATE.nextRefresh.toLocaleTimeString('en-GB') : '—',
+    nOrders: STATE.data ? STATE.data.orders.length : 0,
+    nDa: STATE.data ? STATE.data.da.length : 0,
+    methods: STATE.data ? STATE.data.fetchInfo : {}
+  };
+  renderDq();
+}
+
+function renderDq() {
+  const d = STATE.data;
+  const fs = STATE._fetchStatus || {};
+  $('#dqFetch').innerHTML =
+    '<div class="kv">Last successful fetch: <b>' + (fs.lastOk || '—') + '</b></div>' +
+    '<div class="kv">Next scheduled refresh: <b>' + (fs.next || '—') + '</b> (every ' + CONFIG.refreshMinutes + ' min)</div>' +
+    '<div class="kv">Rows fetched — FY27 Orders: <b>' + (fs.nOrders || 0) + '</b> line items · DA-2026-2027: <b>' + (fs.nDa || 0) + '</b> DA rows</div>' +
+    '<div class="kv">Fetch method — Orders: <b>' + (fs.methods && fs.methods.methodOrders || '—') + '</b> · DA: <b>' + (fs.methods && fs.methods.methodDa || '—') + '</b></div>' +
+    (fs.partial && (!fs.partial.okO || !fs.partial.okD) ? '<div class="kv" style="color:var(--amber);">Partial failure on last refresh — failed tab served from cache.</div>' : '');
+  $('#dqAssump').innerHTML = (d ? d.assumptions : []).map(a => '<li>' + esc(a) + '</li>').join('');
+  const issues = d ? d.dq : [];
+  $('#dqCount').textContent = issues.length;
+  $('#dqCount').style.background = issues.length ? '#FEE2E2' : '#ECFDF5';
+  $('#dqCount').style.color = issues.length ? '#B91C1C' : '#15803D';
+  const cap = 80;
+  $('#dqRows').innerHTML = issues.slice(0, cap).map(i =>
+    '<tr><td><span class="tag">' + esc(i.sheet) + '</span></td><td>' + esc(String(i.row)) + '</td><td>' + esc(i.reason) + '</td><td>' + esc(String(i.detail || '').slice(0, 120)) + '</td></tr>'
+  ).join('') + (issues.length > cap ? '<tr><td colspan="4" style="color:var(--sub)">… and ' + (issues.length - cap) + ' more</td></tr>' : '');
+}
+
+/* ###################################################################################### */
+/* <!-- ANIMATIONS -->  toasts, LIVE badge, refresh button                                 */
+/* ###################################################################################### */
+
+function toast(msg, kind) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind || '');
+  t.textContent = msg;
+  $('#toasts').appendChild(t);
+  if (hasGsap()) gsap.fromTo(t, { x: 40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power2.out' });
+  setTimeout(() => {
+    if (hasGsap()) gsap.to(t, { opacity: 0, x: 30, duration: 0.35, onComplete: () => t.remove() });
+    else t.remove();
+  }, 6000);
+}
+
+function setLive(mode) { // 'ok' | 'stale' | 'down'
+  const b = $('#liveBadge');
+  b.classList.remove('stale', 'down');
+  if (mode === 'stale') b.classList.add('stale');
+  if (mode === 'down') b.classList.add('down');
+  $('#liveText').textContent = mode === 'ok' ? 'LIVE' : (mode === 'stale' ? 'CACHED' : 'OFFLINE');
+  if (hasGsap() && !STATE._pulseInit) {
+    STATE._pulseInit = true;
+    gsap.to('#liveDot', { scale: 1.55, opacity: 0.55, duration: 0.9, yoyo: true, repeat: -1, ease: 'sine.inOut', transformOrigin: 'center' });
+  }
+}
+
+// LIVE badge turns amber if data is older than refreshMinutes * 1.5
+setInterval(() => {
+  if (!STATE.lastFetchOk) return;
+  const age = Date.now() - STATE.lastFetchOk.getTime();
+  if (age > CONFIG.refreshMinutes * 1.5 * 60000) setLive('stale');
+}, 30000);
+
+/* ###################################################################################### */
+/* <!-- BOOT -->                                                                           */
+/* ###################################################################################### */
+
+function renderAll(withEntryAnim) {
+  if (!STATE.data) return;
+  renderKpis();
+  renderCharts();
+  renderTable();
+  syncFilterUI();
+  renderDq();
+  if (withEntryAnim) animateSlide(document.querySelector('.swiper-slide-active') || $('#slide1'));
+}
+
+function initUiEvents() {
+  $$('#plantSeg button').forEach(b => b.onclick = () => {
+    STATE.filters.plant = b.dataset.plant; applyFilterChange();
+  });
+  $('#countryBtn').onclick = e => { e.stopPropagation(); $('#countryDD').classList.toggle('open'); $('#custDD').classList.remove('open'); };
+  $('#custBtn').onclick = e => { e.stopPropagation(); $('#custDD').classList.toggle('open'); $('#countryDD').classList.remove('open'); };
+  document.addEventListener('click', () => { $('#countryDD').classList.remove('open'); $('#custDD').classList.remove('open'); });
+  $$('.dd-panel').forEach(p => p.onclick = e => e.stopPropagation());
+  $$('.dd-actions button').forEach(b => b.onclick = () => {
+    const isCountry = b.closest('.dd').id === 'countryDD';
+    const set = isCountry ? STATE.filters.countries : STATE.filters.customers;
+    const src = isCountry ? $('#countryList') : $('#custList');
+    if (b.dataset.act === 'all') src.querySelectorAll('input').forEach(i => set.add(i.dataset.v));
+    else { set.clear(); $('#custSearch').value = ''; renderCustList(''); }
+    STATE.page = 1;
+    buildFilterOptions();
+    renderAll(false);
+  });
+  $('#custSearch').oninput = e => renderCustList(e.target.value);
+  $('#refreshBtn').onclick = () => fetchAll();
+  $('#fetchRetry').onclick = () => { $('#fetchError').classList.remove('show'); fetchAll(); };
+  $('#resetBtn').onclick = resetFilters;
+  $('#tableSearch').oninput = e => { STATE.search = e.target.value; STATE.page = 1; renderTable(); };
+  $('#pagFirst').onclick = () => { STATE.page = 1; renderTable(); };
+  $('#pagPrev').onclick = () => { STATE.page = Math.max(1, STATE.page - 1); renderTable(); };
+  $('#pagNext').onclick = () => { STATE.page = STATE.page + 1; renderTable(); };
+  $('#pagLast').onclick = () => { STATE.page = 9999; renderTable(); };
+  $('#drawerClose').onclick = closeDrawer;
+  $('#drawerBackdrop').onclick = closeDrawer;
+  $('#dqBtn').onclick = () => $('#dqPanel').classList.toggle('open');
+  $('#dqClose').onclick = () => $('#dqPanel').classList.remove('open');
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDrawer(); $('#dqPanel').classList.remove('open'); } });
+}
+
+window.addEventListener('load', function () {
+  // CDN guard: the embedded sandbox preview blocks external scripts.
+  if (typeof Plotly === 'undefined' || typeof Swiper === 'undefined' || typeof gsap === 'undefined') {
+    $('#cdnError').classList.add('show');
+    setLive('down');
+    $('#lastUpdated').textContent = 'Last updated: — (no data)';
+  } else {
+    $('#cdnError').classList.remove('show');
+  }
+  initUiEvents();
+  renderTableHead();
+  if (typeof Swiper !== 'undefined') initSwiper();
+  const hadSnap = loadSnapshot();   // instant paint from cache, then live fetch
+  fetchAll().then(() => {
+    if (STATE.fetchTimer) clearInterval(STATE.fetchTimer);
+    STATE.fetchTimer = setInterval(fetchAll, CONFIG.refreshMinutes * 60000);
+    STATE.nextRefresh = new Date(Date.now() + CONFIG.refreshMinutes * 60000);
+    renderDq();
+  });
+});
+</script>
+</body>
+</html>
